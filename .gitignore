@@ -1,0 +1,6 @@
+*.exe
+.workbuddy-ai/
+data/
+server.log
+*.log
+.env

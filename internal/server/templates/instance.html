@@ -1,0 +1,146 @@
+{{define "content"}}
+
+<div class="mb-6">
+  <a href="/" class="text-sm text-slate-400 hover:text-sky-300 transition">← 返回实例列表</a>
+</div>
+
+{{if .FlashError}}
+<div data-flash class="mb-6 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
+  <span class="font-medium">操作失败：</span>{{.FlashError}}
+</div>
+{{end}}
+{{if .FlashOK}}
+<div data-flash class="mb-6 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+  ✓ {{.FlashOK}}
+</div>
+{{end}}
+
+<div class="grid lg:grid-cols-3 gap-6">
+
+  <!-- 左：实例信息 -->
+  <div class="lg:col-span-2 space-y-6">
+
+    <div class="rounded-2xl border border-white/10 bg-abyss-900/60 p-6">
+      <div class="flex items-start justify-between">
+        <div class="flex items-center gap-4">
+          <span class="grid h-14 w-14 place-items-center rounded-2xl bg-abyss-800 text-3xl ring-1 ring-white/10">{{typeIcon .Instance.Type}}</span>
+          <div>
+            <h1 class="text-2xl font-bold">{{.Instance.Name}}</h1>
+            <div class="text-sm text-slate-500 font-mono mt-0.5">{{.Instance.Image}} · {{if .Instance.DeviceName}}{{.Instance.DeviceName}}{{else}}本机 Docker{{end}}</div>
+          </div>
+        </div>
+        <span id="statusBadge" class="rounded-full px-3 py-1.5 text-xs font-semibold ring-1 {{statusColor .Instance.Status}}">{{upper .Instance.Status}}</span>
+      </div>
+
+      <div class="grid sm:grid-cols-3 gap-4 mt-6 text-sm">
+        <div class="rounded-xl bg-abyss-800/60 p-4">
+          <div class="text-xs text-slate-500 mb-1">主机端口</div>
+          <div class="font-mono text-lg text-sky-300">{{.Instance.HostPort}}</div>
+        </div>
+        <div class="rounded-xl bg-abyss-800/60 p-4">
+          <div class="text-xs text-slate-500 mb-1">容器端口</div>
+          <div class="font-mono text-lg text-teal-300">{{.Instance.InnerPort}}</div>
+        </div>
+        <div class="rounded-xl bg-abyss-800/60 p-4">
+          <div class="text-xs text-slate-500 mb-1">创建时间</div>
+          <div class="text-lg">{{timeFmt .Instance.CreatedAt}}</div>
+        </div>
+      </div>
+
+      {{if .Instance.Notes}}
+      <div class="mt-4 rounded-xl border border-sky-500/20 bg-sky-500/5 p-4">
+        <div class="text-xs text-sky-400 font-medium mb-1.5">连接方式</div>
+        <code class="text-xs text-slate-300 font-mono break-all">{{.Instance.Notes}}</code>
+      </div>
+      {{end}}
+
+      {{if .Env}}
+      <div class="mt-4">
+        <div class="text-xs text-slate-400 font-medium mb-2">环境变量（凭据）</div>
+        <div class="rounded-xl bg-abyss-950/80 border border-white/5 p-3 font-mono text-xs space-y-1">
+          {{range $k, $v := .Env}}
+          <div class="flex gap-2"><span class="text-teal-400">{{$k}}</span><span class="text-slate-600">=</span><span class="text-slate-300">{{$v}}</span></div>
+          {{end}}
+        </div>
+        <p class="text-[11px] text-slate-600 mt-1.5">⚠️ 密码仅在创建时生成一次，请妥善保存</p>
+      </div>
+      {{end}}
+    </div>
+
+    <!-- 日志 -->
+    <div class="rounded-2xl border border-white/10 bg-abyss-900/60 overflow-hidden">
+      <div class="px-6 py-4 border-b border-white/5 flex items-center justify-between">
+        <div class="font-semibold flex items-center gap-2">
+          <span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span> 实时日志
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="text-xs text-slate-400 flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" id="autoRefresh" checked class="accent-sky-500"> 自动刷新
+          </label>
+          <button onclick="fetchLogs()" class="text-xs border border-white/10 rounded-lg px-3 py-1.5 hover:border-white/25 transition">刷新</button>
+        </div>
+      </div>
+      <pre id="logBox" class="log-box text-xs leading-5 p-5 max-h-[420px] overflow-auto text-slate-300 whitespace-pre-wrap bg-abyss-950/60">加载中…</pre>
+    </div>
+  </div>
+
+  <!-- 右：操作 -->
+  <div class="space-y-6">
+    <div class="rounded-2xl border border-white/10 bg-abyss-900/60 p-6">
+      <h2 class="font-semibold mb-4">实例操作</h2>
+      <div class="space-y-2.5">
+        <form method="post" action="/instances/{{.Instance.ID}}/start">
+          <button class="w-full rounded-xl bg-emerald-500/15 text-emerald-300 font-medium py-2.5 text-sm ring-1 ring-emerald-500/30 hover:bg-emerald-500/25 transition">▶ 启动</button>
+        </form>
+        <form method="post" action="/instances/{{.Instance.ID}}/stop">
+          <button class="w-full rounded-xl bg-amber-500/15 text-amber-300 font-medium py-2.5 text-sm ring-1 ring-amber-500/30 hover:bg-amber-500/25 transition">■ 停止</button>
+        </form>
+        <form method="post" action="/instances/{{.Instance.ID}}/restart">
+          <button class="w-full rounded-xl bg-sky-500/15 text-sky-300 font-medium py-2.5 text-sm ring-1 ring-sky-500/30 hover:bg-sky-500/25 transition">↻ 重启</button>
+        </form>
+        <form method="post" action="/instances/{{.Instance.ID}}/delete"
+              onsubmit="return confirm('确定删除实例 {{.Instance.Name}}？容器将被强制移除，数据卷保留。')">
+          <button class="w-full rounded-xl bg-rose-500/15 text-rose-300 font-medium py-2.5 text-sm ring-1 ring-rose-500/30 hover:bg-rose-500/25 transition">🗑 删除实例</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="rounded-2xl border border-white/10 bg-abyss-900/60 p-6">
+      <h2 class="font-semibold mb-3 text-sm">容器信息</h2>
+      <dl class="text-xs space-y-2.5 text-slate-400">
+        <div class="flex justify-between gap-2"><dt>实例 ID</dt><dd class="font-mono text-slate-300 truncate">{{.Instance.ID}}</dd></div>
+        <div class="flex justify-between gap-2"><dt>容器 ID</dt><dd class="font-mono text-slate-300 truncate">{{.Instance.ContainerID}}</dd></div>
+        <div class="flex justify-between gap-2"><dt>类型</dt><dd class="text-slate-300">{{.Instance.Type}}</dd></div>
+      </dl>
+    </div>
+  </div>
+</div>
+
+<script>
+  const instId = {{.Instance.ID}};
+  async function fetchLogs() {
+    try {
+      const res = await fetch(`/api/instances/${instId}/logs?tail=300`);
+      const data = await res.json();
+      const box = document.getElementById('logBox');
+      if (data.error) { box.textContent = '获取日志失败: ' + data.error; return; }
+      box.textContent = data.logs || '(暂无日志)';
+      box.scrollTop = box.scrollHeight;
+    } catch (e) { document.getElementById('logBox').textContent = '网络错误: ' + e; }
+  }
+  setInterval(() => {
+    if (document.getElementById('autoRefresh').checked) fetchLogs();
+  }, 4000);
+
+  // 状态徽章轮询（仅更新文字，颜色在整页刷新时恢复）
+  setInterval(async () => {
+    try {
+      const res = await fetch(`/api/instances/${instId}`);
+      const data = await res.json();
+      if (data.status) document.getElementById('statusBadge').textContent = data.status.toUpperCase();
+    } catch (e) {}
+  }, 6000);
+
+  fetchLogs();
+</script>
+{{end}}

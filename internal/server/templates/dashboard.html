@@ -1,0 +1,161 @@
+{{define "content"}}
+
+<div class="flex flex-wrap items-end justify-between gap-4 mb-8">
+  <div>
+    <h1 class="text-2xl font-bold tracking-tight">实例总览</h1>
+    <p class="text-slate-400 text-sm mt-1">管理你托管的 Docker 服务实例</p>
+  </div>
+  <div class="flex items-center gap-2 text-xs">
+    <span class="rounded-full bg-abyss-800 px-3 py-1.5 ring-1 ring-white/10 text-slate-400">存储：{{.DBBackend}}</span>
+    <span class="rounded-full bg-abyss-800 px-3 py-1.5 ring-1 ring-white/10 text-slate-400">会话：{{if .RedisOn}}Redis{{else}}内存{{end}}</span>
+  </div>
+</div>
+
+{{if .FlashError}}
+<div data-flash class="mb-6 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
+  <span class="font-medium">操作失败：</span>{{.FlashError}}
+</div>
+{{end}}
+{{if .FlashOK}}
+<div data-flash class="mb-6 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+  ✓ {{.FlashOK}}
+</div>
+{{end}}
+
+<!-- 统计卡片 -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+  <div class="rounded-2xl border border-white/10 bg-abyss-900/60 p-5">
+    <div class="text-xs text-slate-500 mb-2">运行中实例</div>
+    <div class="text-3xl font-bold text-emerald-400">{{.Running}}<span class="text-slate-600 text-lg"> / {{.Total}}</span></div>
+  </div>
+  <div class="rounded-2xl border border-white/10 bg-abyss-900/60 p-5">
+    <div class="text-xs text-slate-500 mb-2">Docker 引擎</div>
+    <div class="text-lg font-bold mt-1">{{if .DockerOK}}<span class="text-emerald-400">● 已连接</span>{{else}}<span class="text-rose-400">● 未连接</span>{{end}}</div>
+    <div class="text-[11px] text-slate-600 mt-1">via Docker Engine API</div>
+  </div>
+  <div class="rounded-2xl border border-white/10 bg-abyss-900/60 p-5">
+    <div class="text-xs text-slate-500 mb-2">元数据库</div>
+    <div class="text-lg font-bold mt-1 text-sky-300">{{.DBBackend}}</div>
+    <div class="text-[11px] text-slate-600 mt-1">实例与用户数据</div>
+  </div>
+  <div class="rounded-2xl border border-white/10 bg-abyss-900/60 p-5">
+    <div class="text-xs text-slate-500 mb-2">会话缓存</div>
+    <div class="text-lg font-bold mt-1 text-teal-300">{{if .RedisOn}}Redis{{else}}进程内存{{end}}</div>
+    <div class="text-[11px] text-slate-600 mt-1">支持多面板实例部署</div>
+  </div>
+</div>
+
+<!-- 远程设备 -->
+{{if .IsAdmin}}
+<section class="mb-8 rounded-xl border border-white/10 bg-abyss-900/60 p-5">
+  <h2 class="mb-4 text-base font-semibold">Docker 设备</h2>
+  <form method="post" action="/devices" class="grid gap-3 md:grid-cols-4 items-end">
+    <label class="text-xs text-slate-400">设备名称<input name="name" required placeholder="production-01" class="mt-1 w-full rounded-lg bg-abyss-800 border border-white/10 px-3 py-2 text-sm"></label>
+    <label class="text-xs text-slate-400">Engine TLS 地址<input name="endpoint" required placeholder="tcp://10.0.0.21:2376" class="mt-1 w-full rounded-lg bg-abyss-800 border border-white/10 px-3 py-2 text-sm"></label>
+    <label class="text-xs text-slate-400">远端数据目录<input name="data_dir" required placeholder="/var/lib/harborlight" class="mt-1 w-full rounded-lg bg-abyss-800 border border-white/10 px-3 py-2 text-sm"></label>
+    <button class="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-abyss-950">验证并添加</button>
+    <label class="flex items-center gap-2 text-sm text-slate-300"><input name="tls" type="checkbox" checked> 启用双向 TLS</label>
+    <label class="text-xs text-slate-400">CA 文件路径<input name="ca_path" required placeholder="/certs/ca.pem" class="mt-1 w-full rounded-lg bg-abyss-800 border border-white/10 px-3 py-2 text-sm"></label>
+    <label class="text-xs text-slate-400">客户端证书路径<input name="cert_path" required placeholder="/certs/client-cert.pem" class="mt-1 w-full rounded-lg bg-abyss-800 border border-white/10 px-3 py-2 text-sm"></label>
+    <label class="text-xs text-slate-400">客户端私钥路径<input name="key_path" required placeholder="/certs/client-key.pem" class="mt-1 w-full rounded-lg bg-abyss-800 border border-white/10 px-3 py-2 text-sm"></label>
+  </form>
+  <div class="mt-4 divide-y divide-white/5">
+    {{range .Devices}}
+    <div class="flex items-center justify-between py-2 text-sm">
+      <span><span class="font-medium">{{.Name}}</span><span class="ml-2 text-xs text-slate-500">{{.Endpoint}}</span></span>
+      <form method="post" action="/devices/{{.ID}}/delete"><button class="text-xs text-rose-300 hover:text-rose-200">删除设备</button></form>
+    </div>
+    {{else}}<p class="py-2 text-xs text-slate-500">尚未登记远程设备</p>{{end}}
+  </div>
+</section>
+{{end}}
+
+<!-- 创建实例 -->
+<div class="rounded-2xl border border-white/10 bg-abyss-900/60 overflow-hidden mb-8">
+  <div class="px-6 py-4 border-b border-white/5 flex items-center justify-between cursor-pointer" onclick="toggleCreate()">
+    <div class="font-semibold flex items-center gap-2">
+      <span class="text-sky-400">+</span> 创建新实例
+    </div>
+    <span id="createChevron" class="text-slate-500 transition-transform">▾</span>
+  </div>
+  <form id="createForm" method="post" action="/instances" class="px-6 py-5 grid md:grid-cols-6 gap-4 items-end">
+    <div class="md:col-span-1">
+      <label class="block text-xs text-slate-400 mb-1.5">运行设备</label>
+      <select name="device_id" class="w-full rounded-lg bg-abyss-800 border border-white/10 px-3 py-2 text-sm">
+        <option value="">本机 Docker</option>
+        {{range .Devices}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
+      </select>
+    </div>
+    <div class="md:col-span-1">
+      <label class="block text-xs text-slate-400 mb-1.5">实例名称</label>
+      <input name="name" required placeholder="my-redis"
+             class="w-full rounded-lg bg-abyss-800 border border-white/10 px-3 py-2 text-sm placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500/40">
+    </div>
+    <div>
+      <label class="block text-xs text-slate-400 mb-1.5">类型</label>
+      <select name="type" id="typeSelect" onchange="onTypeChange()"
+              class="w-full rounded-lg bg-abyss-800 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/40">
+        {{range .Types}}
+        <option value="{{.}}">{{if eq . "redis"}}Redis{{else if eq . "postgres"}}PostgreSQL{{else if eq . "sqlite"}}SQLite (sqlite-web){{else}}自定义镜像{{end}}</option>
+        {{end}}
+      </select>
+    </div>
+    <div id="imageField" class="hidden">
+      <label class="block text-xs text-slate-400 mb-1.5">自定义镜像</label>
+      <input name="image" placeholder="nginx:alpine"
+             class="w-full rounded-lg bg-abyss-800 border border-white/10 px-3 py-2 text-sm placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500/40">
+    </div>
+    <div>
+      <label class="block text-xs text-slate-400 mb-1.5">容器端口 <span class="text-slate-600">(自定义)</span></label>
+      <input name="port" type="number" placeholder="80"
+             class="w-full rounded-lg bg-abyss-800 border border-white/10 px-3 py-2 text-sm placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500/40">
+    </div>
+    <button class="rounded-lg bg-gradient-to-r from-sky-500 to-teal-400 text-abyss-950 font-semibold px-5 py-2.5 text-sm hover:brightness-110 transition whitespace-nowrap">
+      部署实例
+    </button>
+  </form>
+</div>
+
+<!-- 实例列表 -->
+{{if not .Instances}}
+<div class="rounded-2xl border border-dashed border-white/10 py-20 text-center text-slate-500">
+  <div class="text-4xl mb-3">🛰️</div>
+  <p>还没有托管任何实例，从上方创建你的第一个服务吧</p>
+</div>
+{{else}}
+<div class="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+  {{range .Instances}}
+  <a href="/instances/{{.ID}}" class="group rounded-2xl border border-white/10 bg-abyss-900/60 p-5 hover:border-sky-500/40 hover:bg-abyss-800/60 transition">
+    <div class="flex items-start justify-between mb-3">
+      <div class="flex items-center gap-3">
+        <span class="grid h-10 w-10 place-items-center rounded-xl bg-abyss-800 text-xl ring-1 ring-white/10">{{typeIcon .Type}}</span>
+        <div>
+          <div class="font-semibold group-hover:text-sky-300 transition">{{.Name}}</div>
+          <div class="text-[11px] text-slate-500">{{.Image}}{{if .DeviceName}} · {{.DeviceName}}{{else}} · 本机 Docker{{end}}</div>
+        </div>
+      </div>
+      <span class="rounded-full px-2.5 py-1 text-[11px] font-medium ring-1 {{statusColor .Status}}">{{upper .Status}}</span>
+    </div>
+    <div class="flex items-center justify-between text-xs text-slate-400">
+      <span class="font-mono">:{{.HostPort}} → :{{.InnerPort}}</span>
+      <span>{{timeFmt .CreatedAt}}</span>
+    </div>
+  </a>
+  {{end}}
+</div>
+{{end}}
+
+<script>
+  function toggleCreate() {
+    const f = document.getElementById('createForm');
+    const c = document.getElementById('createChevron');
+    const hidden = f.classList.toggle('hidden');
+    c.style.transform = hidden ? 'rotate(-90deg)' : '';
+  }
+  function onTypeChange() {
+    const isCustom = document.getElementById('typeSelect').value === 'custom';
+    document.getElementById('imageField').classList.toggle('hidden', !isCustom);
+  }
+  onTypeChange();
+</script>
+{{end}}
